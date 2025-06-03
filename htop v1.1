@@ -1,0 +1,40 @@
+// Full-featured CPU and Memory Monitor with color-coded output
+
+var RED = "\033[91m"
+var YELLOW = "\033[93m"
+var GREEN = "\033[92m"
+var RESET = "\033[0m"
+
+while (true) {
+    clear()
+
+    var processes = listProcesses()
+    var total_cpu = 0
+    var total_mem = 0
+
+    foreach (var proc in processes) {
+        total_cpu += proc.cpu
+        total_mem += proc.memory
+    }
+
+    print("=== CPU & Memory Monitor ===")
+    print("Total CPU Usage: " + RED + total_cpu + "%" + RESET)
+    print("Total RAM Usage: " + RED + total_mem + " KB" + RESET + "\n")
+
+    foreach (var proc in processes) {
+        var name = proc.name
+        var cpu = proc.cpu
+        var mem = proc.memory
+
+        // CPU usage color
+        var cpu_color = (cpu > 70) ? RED : (cpu > 40) ? YELLOW : GREEN
+        // RAM usage color
+        var mem_color = (mem > 100000) ? RED : (mem > 50000) ? YELLOW : GREEN
+
+        print(RED + "Process: " + name + RESET)
+        print("  CPU: " + cpu_color + cpu + "%" + RESET)
+        print("  MEM: " + mem_color + mem + " KB" + RESET + "\n")
+    }
+
+    sleep(2000)
+}
