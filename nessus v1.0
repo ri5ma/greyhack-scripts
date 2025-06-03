@@ -1,0 +1,80 @@
+#!/bin/bash
+
+// Colors
+var GREEN = "\x1b[32m"
+var RED = "\x1b[31m"
+var YELLOW = "\x1b[33m"
+var RESET = "\x1b[0m"
+
+function getOpenPorts(ip)
+{
+    var openPorts = []
+    var commonPorts = ["21", "22", "23", "25", "53", "80", "110", "139", "143", "443", "445", "3306", "8080"]
+
+    foreach(port in commonPorts)
+    {
+        var sock = new Socket()
+        sock.connect(ip, toInt(port))
+        if(sock.connected)
+        {
+            sock.close()
+            openPorts.push(port)
+        }
+    }
+    return openPorts
+}
+
+function analyzePorts(ip, ports)
+{
+    foreach(port in ports)
+    {
+        echo(YELLOW + "[INFO] Scanning port " + port + "..." + RESET)
+        var res = exec("analyze " + ip + " -p " + port + " -e")
+        echo(res)
+    }
+}
+
+function ownedExploits()
+{
+    var exploits = []
+    var files = listDirectory("/home/" + USER + "/Exploits")
+    foreach(file in files)
+    {
+        if(file.endsWith(".exploit"))
+        {
+            exploits.push(file.replace(".exploit", ""))
+        }
+    }
+    return exploits
+}
+
+function main()
+{
+    if(ARGC < 2)
+    {
+        echo("Usage: vulnScan [target IP]")
+        return
+    }
+
+    var ip = ARGV[1]
+
+    echo(YELLOW + "[*] Scanning " + ip + " for open ports..." + RESET)
+    var openPorts = getOpenPorts(ip)
+
+    if(openPorts.length == 0)
+    {
+        echo(RED + "[!] No open ports found." + RESET)
+        return
+    }
+
+    echo(GREEN + "[+] Open Ports: " + openPorts.join(", ") + RESET)
+
+    echo(YELLOW + "\n[*] Analyzing services and searching for vulnerabilities..." + RESET)
+    analyzePorts(ip, openPorts)
+
+    echo(YELLOW + "\n[*] Checking owned exploits (optional)..." + RESET)
+    var myExploits = ownedExploits()
+    echo(GREEN + "[+] Owned Exploits: " + myExploits.join(", ") + RESET)
+}
+
+main()
