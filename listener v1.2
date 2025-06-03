@@ -1,0 +1,45 @@
+#!/bin/bash
+
+function sendEmail(ip)
+{
+    var subject = "Connection Alert"
+    var body = "A device has connected to your listener.\nIP: " + ip
+    exec("sendemail -to you@example.com -sub \"" + subject + "\" -msg \"" + body + "\"")
+}
+
+function main()
+{
+    if(ARGC < 2)
+    {
+        echo("Usage: connectionListener [port]")
+        return
+    }
+
+    var port = toInt(ARGV[1])
+    var server = new ServerSocket()
+    
+    if(!server.listen(port))
+    {
+        echo("Failed to listen on port " + port)
+        return
+    }
+
+    echo("Listening for incoming connections on port " + port + "...")
+
+    while(true)
+    {
+        var client = server.accept()
+        if(client != null)
+        {
+            var ip = client.getRemoteAddress()
+            echo("Connection from: " + ip)
+
+            sendEmail(ip)
+
+            client.close()
+        }
+        sleep(1) // Prevents CPU overuse
+    }
+}
+
+main()
