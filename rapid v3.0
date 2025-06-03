@@ -1,0 +1,203 @@
+# ┌────────────────────────────────────────┐
+# │              RAPID v3                 │
+# │   Auto-Pwn Framework for Grey Hack    │
+# └────────────────────────────────────────┘
+
+var RED = "\u001b[31m"
+var GREEN = "\u001b[32m"
+var YELLOW = "\u001b[33m"
+var BLUE = "\u001b[34m"
+var MAGENTA = "\u001b[35m"
+var CYAN = "\u001b[36m"
+var RESET = "\u001b[0m"
+
+clear()
+echo(RED + "  _____               _____    _____   _____  \n")
+echo(" |  __ \\      /\\     |  __ \\  |_   _| |  __ \\ \n")
+echo(" | |__) |    /  \\    | |__) |   | |   | |  | |\n")
+echo(" |  _  /    / /\\ \\   |  ___/    | |   | |  | |\n")
+echo(" | | \\ \\   / ____ \\  | |       _| |_  | |__| |\n")
+echo(" |_|  \\_\\ /_/    \\_\\ |_|      |_____| |_____/ \n" + RESET)
+
+# --- Exploit Database ---
+var exploitDB = {
+    "vsftpd 2.3.4": "exploit_vsftpd_backdoor.ghs",
+    "Apache 2.2.8": "exploit_apache_dir_trav.ghs",
+    "OpenSSH 7.2": "exploit_openssh_enum.ghs",
+    "MySQL 5.5": "exploit_mysql_auth_bypass.ghs"
+}
+
+# --- Functions ---
+
+function scanPorts(ip)
+{
+    echo(CYAN + "[*] Scanning ports on " + ip + RESET)
+    var ports = [21,22,23,25,80,110,139,143,443,3306]
+    var open = []
+    for(var p in ports)
+    {
+        var sock = new Socket()
+        if(sock.connect(ip, p)) {
+            echo(GREEN + "[+] Port " + p + " open" + RESET)
+            open.append(p)
+        } else {
+            echo(RED + "[-] Port " + p + " closed" + RESET)
+        }
+        sock.close()
+    }
+    return open
+}
+
+function analyzeService(ip, port)
+{
+    echo(YELLOW + "[*] Analyzing service on port " + port + RESET)
+    var result = exec("analyze " + ip + " " + port)
+    echo(result)
+    var lines = result.split("\n")
+    for(var line in lines)
+    {
+        if(line.contains("Version:"))
+        {
+            return line.split("Version: ")[1]
+        }
+    }
+    return "Unknown"
+}
+
+function matchExploit(service)
+{
+    if(exploitDB.hasKey(service)) {
+        echo(GREEN + "[+] Match found: " + service + RESET)
+        return exploitDB[service]
+    }
+    echo(RED + "[-] No exploit found for " + service + RESET)
+    return null
+}
+
+function deliverExploit(ip, port, exploitScript)
+{
+    echo(YELLOW + "[*] Delivering exploit: " + exploitScript + RESET)
+    var result = exec("run " + exploitScript + " " + ip + " " + port)
+    echo(result)
+    if(result.contains("root") || result.contains("shell")) {
+        simulateShell("root", ip)
+    }
+}
+
+function simulateShell(user, ip)
+{
+    echo(MAGENTA + "[*] Simulated shell opened on " + ip + " as " + user + RESET)
+    while(true) {
+        var cmd = input(user + "@" + ip + ":~$ ")
+        if(cmd == "exit") {
+            echo(CYAN + "[*] Closing shell..." + RESET)
+            break
+        } else {
+            echo("Simulated output for: " + cmd)
+        }
+    }
+}
+
+function md5Crack(hash)
+{
+    var wordlist = ["password", "admin", "123456", "letmein"]
+    for(var w in wordlist)
+    {
+        if(md5(w) == hash) {
+            echo(GREEN + "[+] Hash cracked: " + w + RESET)
+            return
+        }
+    }
+    echo(RED + "[-] Hash not found in wordlist." + RESET)
+}
+
+function bruteForce(ip, port, user)
+{
+    var passwords = ["admin", "1234", "root", "toor"]
+    for(var p in passwords)
+    {
+        var result = exec("connect " + ip + " " + port + " " + user + " " + p)
+        if(result.contains("success")) {
+            echo(GREEN + "[+] Found credentials: " + user + ":" + p + RESET)
+            return
+        }
+    }
+    echo(RED + "[-] No valid credentials found." + RESET)
+}
+
+function corruptLogs()
+{
+    echo(YELLOW + "[*] Corrupting logs in default paths..." + RESET)
+    var paths = ["/var/log/auth.log", "/var/log/syslog", "/var/log/messages"]
+    for(var path in paths)
+    {
+        if(fileExists(path)) {
+            writeFile(path, "")
+            echo(GREEN + "[+] Cleared: " + path + RESET)
+        }
+    }
+}
+
+function autoPwn(ip)
+{
+    var openPorts = scanPorts(ip)
+    for(var port in openPorts)
+    {
+        var service = analyzeService(ip, port)
+        var exploit = matchExploit(service)
+        if(exploit != null)
+        {
+            deliverExploit(ip, port, exploit)
+        }
+    }
+}
+
+# --- Main Menu ---
+
+while(true)
+{
+    echo("\n" + CYAN + "====== RAPID MAIN MENU ======" + RESET)
+    echo(GREEN + "1. Port Scanner")
+    echo("2. Vulnerability Scanner")
+    echo("3. MD5 Hash Cracker")
+    echo("4. Brute Forcer")
+    echo("5. Corrupt Logs")
+    echo("6. Auto-Pwn (Scan ➝ Exploit ➝ Shell)")
+    echo("0. Exit" + RESET)
+    var choice = input("Select an option: ")
+
+    if(choice == "1") {
+        var ip = input("Target IP: ")
+        scanPorts(ip)
+    }
+    else if(choice == "2") {
+        var ip = input("Target IP: ")
+        var port = input("Port: ")
+        analyzeService(ip, port)
+    }
+    else if(choice == "3") {
+        var hash = input("Enter MD5 hash: ")
+        md5Crack(hash)
+    }
+    else if(choice == "4") {
+        var ip = input("Target IP: ")
+        var port = input("Port: ")
+        var user = input("Username: ")
+        bruteForce(ip, port, user)
+    }
+    else if(choice == "5") {
+        corruptLogs()
+    }
+    else if(choice == "6") {
+        var ip = input("Target IP: ")
+        autoPwn(ip)
+    }
+    else if(choice == "0") {
+        echo(CYAN + "[*] Cleaning up and exiting..." + RESET)
+        corruptLogs()
+        break
+    }
+    else {
+        echo(RED + "[!] Invalid selection" + RESET)
+    }
+}
